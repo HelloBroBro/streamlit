@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+import pandas as pd
+
 import streamlit as st
 
-with st.form("check_it_out_now"):
-    cols = st.columns(2)
+np.random.seed(0)
 
-    slider = st.slider("slider")
+df = pd.DataFrame(np.random.randn(50000, 20), columns=("col %d" % i for i in range(20)))
 
-    with cols[0]:
-        st.form_submit_button("Check it")
-    with cols[1]:
-        st.form_submit_button("t's out")
-
-st.write(slider)
+st.dataframe(df)
