@@ -54,12 +54,7 @@ from streamlit.elements.lib.column_config_utils import (
     update_column_config,
 )
 from streamlit.elements.lib.pandas_styler_utils import marshall_styler
-from streamlit.elements.lib.policies import (
-    check_cache_replay_rules,
-    check_callback_rules,
-    check_fragment_path_policy,
-    check_session_state_rules,
-)
+from streamlit.elements.lib.policies import check_widget_policies
 from streamlit.elements.lib.utils import Key, to_key
 from streamlit.errors import StreamlitAPIException
 from streamlit.proto.Arrow_pb2 import Arrow as ArrowProto
@@ -786,10 +781,13 @@ class DataEditorMixin:
 
         key = to_key(key)
 
-        check_fragment_path_policy(self.dg)
-        check_cache_replay_rules()
-        check_callback_rules(self.dg, on_change)
-        check_session_state_rules(default_value=None, key=key, writes_allowed=False)
+        check_widget_policies(
+            self.dg,
+            key,
+            on_change,
+            default_value=None,
+            writes_allowed=False,
+        )
 
         if column_order is not None:
             column_order = list(column_order)
@@ -856,7 +854,7 @@ class DataEditorMixin:
         # Throws an exception if any of the configured types are incompatible.
         _check_type_compatibilities(data_df, column_config_mapping, dataframe_schema)
 
-        arrow_bytes = dataframe_util.pyarrow_table_to_bytes(arrow_table)
+        arrow_bytes = dataframe_util.convert_arrow_table_to_arrow_bytes(arrow_table)
 
         # We want to do this as early as possible to avoid introducing nondeterminism,
         # but it isn't clear how much processing is needed to have the data in a
@@ -937,7 +935,7 @@ class DataEditorMixin:
 
         _apply_dataframe_edits(data_df, widget_state.value, dataframe_schema)
         self.dg._enqueue("arrow_data_frame", proto)
-        return dataframe_util.convert_df_to_data_format(data_df, data_format)
+        return dataframe_util.convert_pandas_df_to_data_format(data_df, data_format)
 
     @property
     def dg(self) -> DeltaGenerator:
