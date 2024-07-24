@@ -60,7 +60,7 @@ import {
   AppRoot,
   ComponentRegistry,
   handleFavicon,
-  createAutoTheme,
+  getHostSpecifiedTheme,
   createTheme,
   CUSTOM_THEME_NAME,
   getCachedTheme,
@@ -74,6 +74,7 @@ import {
   AutoRerun,
   BackMsg,
   Config,
+  ICustomThemeConfig,
   CustomThemeConfig,
   Delta,
   FileURLsResponse,
@@ -107,6 +108,8 @@ import {
   IHostConfigResponse,
   LibConfig,
   AppConfig,
+  createPresetThemes,
+  PresetThemeName,
 } from "@streamlit/lib"
 import without from "lodash/without"
 
@@ -326,7 +329,7 @@ export class App extends PureComponent<Props, State> {
       setInputsDisabled: inputsDisabled => {
         this.setState({ inputsDisabled })
       },
-      themeChanged: this.props.theme.setImportedTheme,
+      themeChanged: this.handleThemeMessage,
       pageChanged: this.onPageChange,
       isOwnerChanged: isOwner => this.setState({ isOwner }),
       jwtHeaderChanged: ({ jwtHeaderName, jwtHeaderValue }) => {
@@ -596,6 +599,21 @@ export class App extends PureComponent<Props, State> {
     return false
   }
 
+  handleThemeMessage = (
+    themeName?: PresetThemeName,
+    theme?: ICustomThemeConfig
+  ): void => {
+    const [, lightTheme, darkTheme] = createPresetThemes()
+    const isUsingPresetTheme = isPresetTheme(this.props.theme.activeTheme)
+    if (themeName === lightTheme.name && isUsingPresetTheme) {
+      this.props.theme.setTheme(lightTheme)
+    } else if (themeName === darkTheme.name && isUsingPresetTheme) {
+      this.props.theme.setTheme(darkTheme)
+    } else if (theme) {
+      this.props.theme.setImportedTheme(theme)
+    }
+  }
+
   /**
    * Called by ConnectionManager when our connection state changes
    */
@@ -605,10 +623,22 @@ export class App extends PureComponent<Props, State> {
     )
 
     if (newState === ConnectionState.CONNECTED) {
-      logMessage("Reconnected to server; requesting a script run")
-      // Trigger a full app rerun:
-      this.widgetMgr.sendUpdateWidgetsMessage(undefined)
-      this.setState({ dialog: null })
+      logMessage("Reconnected to server.")
+
+      const lastRunWasInterrupted =
+        this.state.scriptRunState === ScriptRunState.RERUN_REQUESTED ||
+        this.state.scriptRunState === ScriptRunState.RUNNING
+
+      // We request a script rerun if:
+      //   1. this is the first time we establish a websocket connection to the
+      //      server, or
+      //   2. our last script run attempt was interrupted by the websocket
+      //      connection dropping.
+      if (!this.sessionInfo.last || lastRunWasInterrupted) {
+        logMessage("Requesting a script run.")
+        this.widgetMgr.sendUpdateWidgetsMessage(undefined)
+        this.setState({ dialog: null })
+      }
 
       this.hostCommunicationMgr.sendMessageToHost({
         type: "WEBSOCKET_CONNECTED",
@@ -1141,7 +1171,9 @@ export class App extends PureComponent<Props, State> {
       this.props.theme.addThemes([])
 
       if (usingCustomTheme) {
-        this.setAndSendTheme(createAutoTheme())
+        // Reset to the auto theme taking into account any host preferences
+        // aka embed query params.
+        this.setAndSendTheme(getHostSpecifiedTheme())
       }
     }
   }
