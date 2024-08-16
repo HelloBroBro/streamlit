@@ -32,7 +32,7 @@ from streamlit.runtime.fragment import (
     fragment,
 )
 from streamlit.runtime.pages_manager import PagesManager
-from streamlit.runtime.scriptrunner.exceptions import RerunException
+from streamlit.runtime.scriptrunner_utils.exceptions import RerunException
 from tests.delta_generator_test_case import DeltaGeneratorTestCase
 from tests.streamlit.element_mocks import (
     ELEMENT_PRODUCER,
@@ -163,7 +163,7 @@ class FragmentTest(unittest.TestCase):
         assert ctx.current_fragment_id == "my_fragment_id"
 
     @patch("streamlit.runtime.fragment.get_script_run_ctx")
-    def test_wrapped_fragment_saved_in_FragmentStorage(
+    def test_wrapped_fragment_not_saved_in_FragmentStorage(
         self, patched_get_script_run_ctx
     ):
         ctx = MagicMock()
@@ -180,7 +180,7 @@ class FragmentTest(unittest.TestCase):
         # fragment a single time.
         my_fragment()
         my_fragment()
-        ctx.fragment_storage.set.assert_called_once()
+        assert ctx.fragment_storage.set.call_count == 2
 
     @patch("streamlit.runtime.fragment.get_script_run_ctx")
     def test_sets_dg_stack_and_cursor_to_snapshots_if_fragment_ids_this_run(
