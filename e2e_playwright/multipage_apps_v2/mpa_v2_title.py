@@ -14,9 +14,16 @@
 
 import streamlit as st
 
-x = st.camera_input("Label1", help="help1", key="camera_input_1")
 
-if x is not None:
-    st.image(x)
+def a():
+    st.header("Page A")
+    st.write("This is page A")
 
-y = st.camera_input("Label2", help="help2", disabled=True)
+
+def b():
+    st.header("Page B")
+    st.write("This is page B")
+
+
+page = st.navigation([st.Page(a), st.Page(b, title="1_page__2")])
+page.run()
